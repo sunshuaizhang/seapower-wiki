@@ -8,7 +8,6 @@
 - ✅ 文件 mtime 缓存,性能与实时两不误
 - ✅ 武器表点击弹药可弹窗查看百科卡片
 - ✅ **实时从 Unity 资源抽取贴图**(涂装/舷号/徽章/国旗),懒加载 + 磁盘缓存
-- ✅ 描述里的 `\n` 转义自动还原为真换行,前端按段落渲染
 
 ## 关于 Sea Power
 
@@ -211,9 +210,6 @@ sea-power-wiki/
 3. 否则重新解析并更新缓存
 
 **游戏打补丁或你编辑 mod 后,下次 API 请求即生效**,不重启服务、不重建 JSON。强制每次重解析:`game.cache-enabled: false`。
-
-### 文本反转义
-语言文件描述字段里游戏用字面 `\n`(反斜杠 + n)表示换行,`LanguageService.unescapeInlineText()` 会把 `\n` / `\r` / `\t` / `\\` 还原为真字符;其他反斜杠序列保留(避免误伤 `audio/ships/...` 这类路径)。前端 `.description-block` 用 `white-space: pre-line` 渲染段落。
 
 ### 图片部分
 启动时 Java 拉起一个常驻 Python 子进程(`scripts/unity_extractor.py`),用 UnityPy 打开 `resources.assets` 等 5 个 `.assets` 文件,建立 `texture_name → object` 索引(~2 秒、8800+ 条)。
