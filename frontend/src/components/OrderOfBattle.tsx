@@ -19,6 +19,7 @@ export function OrderOfBattle({
   units: MissionUnit[];
 }) {
   const [side, setSide] = useState<Side>('player');
+  const { unitNames } = useApp();
 
   const sideFormations = useMemo(
     () => formations.filter((f) => f.side === side),
@@ -31,13 +32,46 @@ export function OrderOfBattle({
     return m;
   }, [units]);
 
-  // Units that aren't claimed by any formation (rare) still get rendered as a
-  // "未编入" pseudo-formation at the bottom so we never silently drop data.
-  const orphans = useMemo(() => {
+  // Embarked aircraft (CustomAirGroup) are synthesized into one Formation per
+  // host vessel so a carrier's air wing reads as "<carrier> · 舰载机". Anything
+  // genuinely orphaned (rare) falls through to a single "未编入" formation.
+  const synthesized = useMemo(() => {
     const claimed = new Set<string>();
     for (const f of formations) for (const s of f.unitSlots) claimed.add(s);
-    return units.filter((u) => u.side === side && !claimed.has(u.slot));
-  }, [formations, units, side]);
+
+    const out: MissionFormation[] = [];
+    // 1. Group embarked aircraft by their parent vessel slot.
+    const byParent = new Map<string, string[]>();
+    const trueOrphans: string[] = [];
+    for (const u of units) {
+      if (u.side !== side) continue;
+      if (claimed.has(u.slot)) continue;
+      if (u.parentSlot) {
+        const arr = byParent.get(u.parentSlot) ?? [];
+        arr.push(u.slot);
+        byParent.set(u.parentSlot, arr);
+      } else {
+        trueOrphans.push(u.slot);
+      }
+    }
+    // 2. Emit one formation per host carrier / helo ship.
+    for (const [parent, slots] of byParent) {
+      const host = units.find((u) => u.slot === parent);
+      const hostName = host
+        ? unitNames[host.unitId] || host.unitId
+        : parent;
+      out.push({
+        side,
+        name: `${hostName} · 舰载机`,
+        pattern: '舰载',
+        unitSlots: slots,
+      });
+    }
+    if (trueOrphans.length > 0) {
+      out.push({ side, name: '未编入', pattern: null, unitSlots: trueOrphans });
+    }
+    return out;
+  }, [formations, units, side, unitNames]);
 
   const playerCount = formations.filter((f) => f.side === 'player').length;
   const enemyCount = formations.filter((f) => f.side === 'enemy').length;
@@ -68,13 +102,14 @@ export function OrderOfBattle({
             bySlot={bySlot}
           />
         ))}
-        {orphans.length > 0 && (
+        {synthesized.map((f) => (
           <FormationBlock
-            formation={{ side, name: '未编入', pattern: null, unitSlots: orphans.map((u) => u.slot) }}
+            key={`${f.side}|${f.name ?? ''}|${f.unitSlots.join(',')}`}
+            formation={f}
             bySlot={bySlot}
           />
-        )}
-        {sideFormations.length === 0 && orphans.length === 0 && (
+        ))}
+        {sideFormations.length === 0 && synthesized.length === 0 && (
           <div className="oob-empty">无{side === 'player' ? '我' : '敌'}方编队</div>
         )}
       </div>
@@ -89,12 +124,18 @@ function FormationBlock({
   formation: MissionFormation;
   bySlot: Map<string, MissionUnit>;
 }) {
+  // Count each slot by its unit's `count` (>1 for embarked-airwing entries) so
+  // a carrier reads "舰载机 · 27 架" instead of "舰载机 · 7 单位".
+  const total = formation.unitSlots.reduce(
+    (n, slot) => n + (bySlot.get(slot)?.count ?? 1),
+    0,
+  );
   return (
     <div className="formation">
       <div className="formation-head">
         <span className="formation-name">{formation.name || '未命名编队'}</span>
         {formation.pattern && <span className="formation-pat">{formation.pattern}</span>}
-        <span className="formation-count">{formation.unitSlots.length} 单位</span>
+        <span className="formation-count">{total} 单位</span>
       </div>
       <div className="formation-units">
         {formation.unitSlots.map((slot) => {
@@ -116,7 +157,7 @@ function UnitChip({ unit }: { unit: MissionUnit }) {
   // Prefer the language-file display name (e.g. "提康德罗加") over the raw game
   // id; explicit nameOverride from the mission INI still wins over both.
   const display = unit.nameOverride || unitNames[unit.unitId] || unit.unitId;
-  const visualCat = inferVisualCategory(unit.slot);
+  const visualCat = inferVisualCategory(unit);
   const targetCat = resolveCategory(visualCat);
   return (
     <button
@@ -126,7 +167,10 @@ function UnitChip({ unit }: { unit: MissionUnit }) {
       onClick={(e) => openUnitPopover(e.currentTarget, unit.unitId, targetCat)}
     >
       <span className="unit-chip-cat">{catLabel(visualCat)}</span>
-      <span className="unit-chip-name">{display}</span>
+      <span className="unit-chip-name">
+        {unit.count > 1 ? `${unit.count}× ` : ''}
+        {display}
+      </span>
       {unit.missionType && unit.missionType !== '' && (
         <span className="unit-chip-task">{unit.missionType}</span>
       )}
@@ -137,7 +181,10 @@ function UnitChip({ unit }: { unit: MissionUnit }) {
 // Slot suffix tells us the visual category bucket: TaskforceNVessel1,
 // TaskforceNAircraft1, etc. Sub and Vessel render with different left borders
 // but both live in the vessels/ data folder — resolveCategory handles that.
-function inferVisualCategory(slot: string): string {
+// Embarked-aircraft synthetic slots ("…#airwing-N") are always aircraft.
+function inferVisualCategory(unit: MissionUnit): string {
+  if (unit.parentSlot) return 'aircraft';
+  const slot = unit.slot;
   if (/Aircraft\d+$/.test(slot)) return 'aircraft';
   if (/Helicopter\d+$/.test(slot)) return 'aircraft';
   if (/Submarine\d+$/.test(slot)) return 'sub';

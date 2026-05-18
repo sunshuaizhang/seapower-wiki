@@ -97,6 +97,10 @@ export type MissionUnit = {
   variant: string | null;
   missionType: string | null;
   nameOverride: string | null;
+  /** Quantity for embarked-air-wing entries (>=1 always). */
+  count: number;
+  /** Slot of the host vessel for embarked aircraft; null for stand-alone units. */
+  parentSlot: string | null;
 };
 
 export type MissionObjective = {

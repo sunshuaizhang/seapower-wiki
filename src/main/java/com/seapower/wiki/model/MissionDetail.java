@@ -56,12 +56,19 @@ public record MissionDetail(
     ) {}
 
     public record Unit(
-            String slot,         // "Taskforce1Vessel1"
+            String slot,         // "Taskforce1Vessel1" or "Taskforce1Vessel1#airwing-1"
             String side,         // "player" / "enemy" / "neutral"
             String unitId,       // game id like "usn_cv_forrestal_75"
             String variant,      // "Variant2" / "Default" / null
             String missionType,  // "Patrol" / "Escort" / etc.
-            String nameOverride  // explicit naming override (rare)
+            String nameOverride, // explicit naming override (rare)
+            /** Quantity for embarked-air-wing entries (CustomAirGroup on a carrier
+             *  declares N planes per line). 1 for normal stand-alone units. */
+            int count,
+            /** Slot of the parent vessel when this entry is an embarked aircraft.
+             *  Null for normal stand-alone units. Frontend groups embarked planes
+             *  under a synthetic "<vessel> · 舰载机" formation. */
+            String parentSlot
     ) {}
 
     public record Objective(

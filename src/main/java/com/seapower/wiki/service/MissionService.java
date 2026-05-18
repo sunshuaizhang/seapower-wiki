@@ -259,8 +259,37 @@ public class MissionService {
                     slot, side, type,
                     s.get("VariantReference"),
                     s.get("MissionType"),
-                    s.get("Name")
+                    s.get("Name"),
+                    1, null
             ));
+            // Carriers / helo-equipped ships declare their embarked air wing as
+            // CustomAirGroup=True followed by entries like
+            //   usn_f-14a=Squadron14,12
+            // inside the same vessel section. These planes never get their own
+            // [TaskforceNAircraftM] section, so the loop above misses them.
+            if ("True".equalsIgnoreCase(s.get("CustomAirGroup"))) {
+                int airIdx = 1;
+                for (String[] entry : s.entries()) {
+                    String key = entry[0];
+                    String val = entry[1];
+                    if (key == null || val == null) continue;
+                    // Embarked-aircraft lines are the only ones whose value starts
+                    // with "Squadron"; bookkeeping keys (CustomAirGroup, Type,
+                    // FlightDeck_*, …) are filtered out by this check.
+                    if (!val.startsWith("Squadron")) continue;
+                    int comma = val.indexOf(',');
+                    int count = 1;
+                    if (comma >= 0) {
+                        try { count = Integer.parseInt(val.substring(comma + 1).trim()); }
+                        catch (NumberFormatException ignored) {}
+                    }
+                    out.add(new MissionDetail.Unit(
+                            slot + "#airwing-" + (airIdx++),
+                            side, key, null, null, null,
+                            Math.max(1, count), slot
+                    ));
+                }
+            }
         }
         return out;
     }
