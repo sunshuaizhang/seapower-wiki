@@ -1,0 +1,52 @@
+# Default: auto-detect text vs binary, store text with LF in the repo.
+# Working tree gets the platform's native line ending (CRLF on Windows) only
+# if a file is text AND no explicit eol override below claims it.
+* text=auto eol=lf
+
+# ---- Source code: force LF everywhere (incl. Windows working tree) ----
+*.java       text eol=lf
+*.kt         text eol=lf
+*.ts         text eol=lf
+*.tsx        text eol=lf
+*.js         text eol=lf
+*.jsx        text eol=lf
+*.mjs        text eol=lf
+*.cjs        text eol=lf
+*.css        text eol=lf
+*.scss       text eol=lf
+*.html       text eol=lf
+*.xml        text eol=lf
+*.json       text eol=lf
+*.yml        text eol=lf
+*.yaml       text eol=lf
+*.toml       text eol=lf
+*.md         text eol=lf
+*.txt        text eol=lf
+*.ini        text eol=lf
+*.properties text eol=lf
+*.sh         text eol=lf
+*.py         text eol=lf
+
+# ---- Windows-only scripts: must be CRLF or cmd.exe chokes ----
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# ---- Binaries: don't touch ----
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.svg  binary
+*.pdf  binary
+*.zip  binary
+*.jar  binary
+*.war  binary
+*.class binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.eot   binary
