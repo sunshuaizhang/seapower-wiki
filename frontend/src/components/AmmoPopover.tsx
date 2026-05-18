@@ -1,46 +1,33 @@
-// Singleton click popover for ammunition links. Mounted at App root and
-// driven by ammoPopover state in AppContext. Handles fetch+cache, position,
-// outside-click and Esc dismissal.
+// Click popover for ammunition links. Mounted at App root, driven by the
+// ammoPopover state in AppContext. Positioning / dismissal / close button
+// live in the shared <ClickPopover> shell; this component only handles the
+// state subscription, fetch+cache and body rendering.
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { getAmmoDetail } from '../api';
 import { AMMO_STAT_KEYS } from '../constants';
 import { useApp } from '../state/useApp';
 import type { AmmunitionDetail } from '../types';
+import { createFetchCache } from '../utils/fetchCache';
+import type { FetchResult } from '../utils/fetchCache';
+import { truncate } from '../utils/format';
+import { ClickPopover } from './ClickPopover';
 
-type AmmoResult = AmmunitionDetail | { error: string };
-type CacheEntry = AmmoResult | Promise<AmmoResult>;
+const fetchCached = createFetchCache<AmmunitionDetail>(getAmmoDetail);
 
-const cache = new Map<string, CacheEntry>();
-
-function fetchCached(id: string, lang: string): Promise<AmmoResult> {
-  const key = `${lang}|${id}`;
-  const existing = cache.get(key);
-  if (existing) return Promise.resolve(existing);
-  const p: Promise<AmmoResult> = getAmmoDetail(id, lang)
-    .then((d) => {
-      cache.set(key, d);
-      return d as AmmoResult;
-    })
-    .catch((e: unknown) => {
-      const r: AmmoResult = { error: String(e) };
-      cache.set(key, r);
-      return r;
-    });
-  cache.set(key, p);
-  return p;
-}
+// Clicking another ammo link shouldn't auto-close; let its own handler swap
+// the open popover instead. Stable reference for the shell's effect deps.
+const TRIGGERS = ['.ammo-link'];
 
 export function AmmoPopover() {
-  const { ammoPopover, closeAmmoPopover, lang } = useApp();
-  const [data, setData] = useState<AmmoResult | null>(null);
-  const ref = useRef<HTMLDivElement | null>(null);
+  const { ammoPopover, closeAmmoPopover } = useApp();
+  const [data, setData] = useState<FetchResult<AmmunitionDetail> | null>(null);
 
-  // Reset data synchronously when the (id, lang) target changes. Render-phase
-  // setState is what the set-state-in-effect rule wants; the effect below only
-  // owns the async fetch. Loading is "data === null while ammoPopover != null".
-  const fetchKey = ammoPopover ? `${lang}|${ammoPopover.id}` : '';
+  // Reset data synchronously when the target id changes. Render-phase setState
+  // is what react-hooks/set-state-in-effect wants; the effect below only owns
+  // the async fetch.
+  const fetchKey = ammoPopover ? ammoPopover.id : '';
   const [lastFetchKey, setLastFetchKey] = useState(fetchKey);
   if (lastFetchKey !== fetchKey) {
     setLastFetchKey(fetchKey);
@@ -50,53 +37,27 @@ export function AmmoPopover() {
   useEffect(() => {
     if (!ammoPopover) return;
     let alive = true;
-    fetchCached(ammoPopover.id, lang).then((d) => {
+    fetchCached(ammoPopover.id).then((d) => {
       if (alive) setData(d);
     });
     return () => {
       alive = false;
     };
-  }, [ammoPopover, lang]);
+  }, [ammoPopover]);
 
-  // Position after content paints. Re-runs when data arrives so the popover
-  // size is accurate.
-  useLayoutEffect(() => {
-    if (!ammoPopover || !ref.current) return;
-    positionPopover(ref.current, ammoPopover.anchorEl);
-  }, [ammoPopover, data]);
-
-  // Outside-click + Esc to dismiss. Listeners are only attached while open.
-  useEffect(() => {
-    if (!ammoPopover) return;
-    const onClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (!target) return;
-      if (ref.current?.contains(target)) return;
-      // Clicking another ammo-link is handled by AmmoLink's own onClick; don't
-      // also fire close here or we'd race the open.
-      if (target.closest?.('.ammo-link')) return;
-      closeAmmoPopover();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeAmmoPopover();
-    };
-    document.addEventListener('click', onClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('click', onClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [ammoPopover, closeAmmoPopover]);
-
-  const visible = !!ammoPopover;
   return (
-    <div ref={ref} className={`ammo-tooltip${visible ? ' visible' : ''}`}>
-      {visible && data === null && <div className="ammo-tip-loading">加载中…</div>}
-      {visible && data !== null && 'error' in data && (
+    <ClickPopover
+      anchor={ammoPopover?.anchorEl ?? null}
+      onClose={closeAmmoPopover}
+      className="ammo-tooltip"
+      triggerSelectors={TRIGGERS}
+    >
+      {data === null && <div className="ammo-tip-loading">加载中…</div>}
+      {data !== null && 'error' in data && (
         <div className="ammo-tip-loading">加载失败: {data.error}</div>
       )}
-      {visible && data !== null && !('error' in data) && <AmmoBody a={data} />}
-    </div>
+      {data !== null && !('error' in data) && <AmmoBody a={data} />}
+    </ClickPopover>
   );
 }
 
@@ -128,8 +89,7 @@ function AmmoBody({ a }: { a: AmmunitionDetail }) {
     }
   }
 
-  const desc =
-    a.description && a.description.length > 200 ? a.description.slice(0, 200) + '…' : a.description;
+  const desc = truncate(a.description);
 
   return (
     <div className="ammo-tip">
@@ -141,24 +101,4 @@ function AmmoBody({ a }: { a: AmmunitionDetail }) {
       {desc && <div className="ammo-tip-desc">{desc}</div>}
     </div>
   );
-}
-
-function positionPopover(tip: HTMLElement, anchor: HTMLElement) {
-  tip.style.left = '0px';
-  tip.style.top = '0px';
-  const r = anchor.getBoundingClientRect();
-  const tw = tip.offsetWidth;
-  const th = tip.offsetHeight;
-  const margin = 8;
-  let left = r.right + margin;
-  let top = r.top;
-  if (left + tw > window.innerWidth - margin) {
-    left = Math.max(margin, r.left - tw - margin);
-  }
-  if (top + th > window.innerHeight - margin) {
-    top = Math.max(margin, window.innerHeight - th - margin);
-  }
-  if (top < margin) top = margin;
-  tip.style.left = left + 'px';
-  tip.style.top = top + 'px';
 }

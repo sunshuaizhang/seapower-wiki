@@ -26,6 +26,10 @@ public record UnitDetail(
         /** Weapon mounts on vessels / aircraft / land_units. */
         List<WeaponMount> weapons,
 
+        /** Loadout names available on this unit (Default + variants like Late / AirToAir / Empty).
+         *  Frontend uses this for the loadout selector; a single-element list = no selector. */
+        List<String> loadouts,
+
         /** Sensors (radar/sonar/visual/esm). */
         List<Sensor> sensors,
 
@@ -51,7 +55,11 @@ public record UnitDetail(
             String type,          // Missile, Gun, Torpedo, CIWS, Chaff, Noisemaker
             String systemName,    // MK26, MK45, MK15, ...
             String ammunitionId,  // direct ammo reference, nullable
-            String magazineRef    // AssociatedMagazine name, nullable
+            String magazineRef,   // AssociatedMagazine name, nullable
+            /** Pre-formatted year→ammo schedule for date-based stations
+             *  (Sea Power v0.7.9+). Null if the station carries a fixed ammo.
+             *  Example: "0+ AIM-9H · 1977+ AIM-9L · 1985+ AIM-9M". */
+            String dateBasedSchedule
     ) {}
 
     public record Sensor(

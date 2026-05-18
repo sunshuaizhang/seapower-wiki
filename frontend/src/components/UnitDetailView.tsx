@@ -3,7 +3,7 @@
 //   hero → stats strip → description → armament + sensors (two columns) →
 //   variants → air group → full specs (collapsible) → raw INI (collapsible).
 
-import { KEY_STATS_BY_CATEGORY } from '../constants';
+import { KEY_STATS_BY_CATEGORY, specHint } from '../constants';
 import type { UnitDetail } from '../types';
 import { AirGroup } from './AirGroup';
 import { Armament } from './Armament';
@@ -50,7 +50,7 @@ function pickKeyStats(u: UnitDetail): Stat[] {
   for (const [key, label, unit] of want) {
     const v = specs[key];
     if (v === undefined || v === null || v === '') continue;
-    out.push({ label, value: String(v), unit });
+    out.push({ label, value: String(v), unit, hint: specHint(key, String(v)) });
     if (out.length >= 6) break;
   }
   return out;

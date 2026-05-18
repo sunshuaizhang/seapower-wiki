@@ -38,3 +38,28 @@ export function specFrom(
   for (const k of keys) if (specs[k]) return specs[k];
   return null;
 }
+
+// Append an ellipsis to text that exceeds `max` characters. Used by popovers
+// that show a description preview but can't fit the full game text.
+export function truncate(text: string | null | undefined, max = 200): string | null {
+  if (!text) return null;
+  return text.length > max ? text.slice(0, max) + '…' : text;
+}
+
+// Pretty-print numeric values from the INI: strip useless trailing ".0",
+// add thousand-separators for values ≥ 1000, but leave non-numeric strings
+// (e.g. "Fighter", "Small", "12,000hp") untouched.
+const NUM_FORMAT = new Intl.NumberFormat('zh-CN');
+export function formatNumber(raw: string): string {
+  if (!raw) return raw;
+  const s = raw.trim();
+  if (!/^-?\d+(\.\d+)?$/.test(s)) return raw;
+  const n = Number(s);
+  if (!Number.isFinite(n)) return raw;
+  if (Number.isInteger(n)) return NUM_FORMAT.format(n);
+  // Float — drop trailing zeros but keep precision (e.g. 0.612 → 0.612, 23600.0 → 23,600).
+  const trimmed = s.replace(/\.?0+$/, '');
+  if (!trimmed.includes('.')) return NUM_FORMAT.format(Number(trimmed));
+  const [whole, frac] = trimmed.split('.');
+  return `${NUM_FORMAT.format(Number(whole))}.${frac}`;
+}

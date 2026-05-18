@@ -162,4 +162,20 @@ public class AmmunitionService {
         Path file = gameConfig.categoryDir("ammunition").resolve(id + ".ini");
         return Files.exists(file);
     }
+
+    /**
+     * Stable English Type from the ammo's INI [General].Type — used to label aircraft
+     * hardpoint station loads (Missile / Torpedo / Sonobuoy / Bomb / Fueltank / …).
+     * Returns null if the ammo INI is missing or has no Type field.
+     */
+    public String typeOf(String ammoId) {
+        if (ammoId == null || ammoId.isEmpty()) return null;
+        Path file = gameConfig.categoryDir("ammunition").resolve(ammoId + ".ini");
+        if (!Files.exists(file)) return null;
+        IniDocument doc = iniCache.get(file);
+        IniDocument.IniSection g = doc.section("General");
+        if (g == null) return null;
+        String t = g.get("Type");
+        return (t == null || t.isEmpty()) ? null : t;
+    }
 }

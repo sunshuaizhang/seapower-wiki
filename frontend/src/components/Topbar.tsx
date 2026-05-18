@@ -1,47 +1,69 @@
-// Top bar: brand + tabs + language picker.
+// Top bar: brand on the left, current-category badge + data-source path on the
+// right. Category tabs live in the sidebar now so the bar is purely status.
 
-import { LANGUAGES, TAB_LABELS } from '../constants';
+import { DOMAIN_LABELS, DOMAIN_OF, TAB_LABELS } from '../constants';
 import { useApp } from '../state/useApp';
-import type { Category } from '../types';
+import type { GameVersion } from '../types';
 
 type Props = {
-  metaInfo: string; // shown as small grey "// lang=cn" text next to the title
+  /** StreamingAssets directory the backend is reading from (from /api/meta). */
+  streamingAssets: string;
+  /** Parsed first entry of the game's changelog.txt — tells users which
+   *  Sea Power patch the wiki data was captured from. */
+  gameVersion?: GameVersion;
 };
 
-export function Topbar({ metaInfo }: Props) {
-  const { category, setCategory, lang, setLang } = useApp();
+export function Topbar({ streamingAssets, gameVersion }: Props) {
+  const { category, categoryCount } = useApp();
+  const catLabel = TAB_LABELS.find((t) => t.cat === category)?.label ?? category;
+  const domainLabel = DOMAIN_LABELS[DOMAIN_OF[category]];
+  // Long Windows paths don't fit the topbar; show only the trailing segments
+  // and keep the full string in the tooltip.
+  const shortPath = tailPath(streamingAssets, 3);
   return (
     <header className="topbar">
-      <div className="brand">
+      <a className="brand" href="/" aria-label="返回首页">
         <span className="insignia">⚓</span>
-        <span className="title">SEA POWER · FIELD INTEL</span>
-        <span className="subtitle">{metaInfo}</span>
-      </div>
-      <div className="controls">
-        <div className="tabs" id="catTabs">
-          {TAB_LABELS.map((t) => (
-            <button
-              key={t.cat}
-              className={`tab${category === t.cat ? ' active' : ''}`}
-              data-cat={t.cat}
-              onClick={() => setCategory(t.cat as Category)}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="brand-text">
+          <div className="title">SEA POWER</div>
+          <div className="subtitle">FIELD INTEL</div>
         </div>
-        <select
-          className="lang-select"
-          value={lang}
-          onChange={(e) => setLang(e.target.value)}
-        >
-          {LANGUAGES.map((l) => (
-            <option key={l.code} value={l.code}>
-              {l.label}
-            </option>
-          ))}
-        </select>
+      </a>
+      <div className="topbar-meta">
+        <div className="topbar-cell">
+          <span className="topbar-cell-label">当前</span>
+          <span className="topbar-cell-domain">{domainLabel}</span>
+          <span className="topbar-cell-sep">›</span>
+          <span className="topbar-cell-value">{catLabel}</span>
+          {categoryCount !== null && (
+            <span className="topbar-cell-suffix">{categoryCount}</span>
+          )}
+        </div>
+        {gameVersion && (
+          <div
+            className="topbar-cell"
+            title={`Sea Power v${gameVersion.version}  ·  Build #${gameVersion.build}  ·  ${gameVersion.date}`}
+          >
+            <span className="topbar-cell-label">游戏版本</span>
+            <span className="topbar-cell-value">v{gameVersion.version}</span>
+            <span className="topbar-cell-suffix">#{gameVersion.build}</span>
+          </div>
+        )}
+        {streamingAssets && (
+          <div className="topbar-cell" title={streamingAssets}>
+            <span className="topbar-cell-label">数据源</span>
+            <code className="topbar-cell-path">{shortPath}</code>
+          </div>
+        )}
       </div>
     </header>
   );
+}
+
+function tailPath(p: string, segments: number): string {
+  if (!p) return '';
+  const norm = p.replace(/\\/g, '/').replace(/\/+$/, '');
+  const parts = norm.split('/').filter(Boolean);
+  if (parts.length <= segments) return norm;
+  return '…/' + parts.slice(-segments).join('/');
 }

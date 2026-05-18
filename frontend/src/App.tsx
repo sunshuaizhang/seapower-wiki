@@ -6,6 +6,7 @@ import { AmmoPopover } from './components/AmmoPopover';
 import { Detail } from './components/Detail';
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
+import { UnitPopover } from './components/UnitPopover';
 import { AppProvider } from './state/AppContext';
 import type { Meta } from './types';
 
@@ -18,17 +19,18 @@ function AppShell() {
       .catch((e: unknown) => console.warn('meta failed', e));
   }, []);
 
-  const metaInfo = meta ? `// lang=${meta.defaultLanguage}` : '';
   const streamingAssets = meta?.streamingAssets ?? '';
+  const gameVersion = meta?.gameVersion;
 
   return (
     <>
-      <Topbar metaInfo={metaInfo} />
+      <Topbar streamingAssets={streamingAssets} gameVersion={gameVersion} />
       <main className="layout">
         <Sidebar />
         <Detail streamingAssets={streamingAssets} />
       </main>
       <AmmoPopover />
+      <UnitPopover />
     </>
   );
 }

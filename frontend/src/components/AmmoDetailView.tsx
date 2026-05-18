@@ -2,17 +2,18 @@
 // detail (hero → stats strip → description → specs → raw) but a different
 // data model (no weapons / sensors / variants).
 
-import { useState } from 'react';
 import { imageUrl } from '../api';
 import { AMMO_STAT_KEYS } from '../constants';
 import type { AmmunitionDetail } from '../types';
+import { useImageLoadState } from '../utils/useImageLoadState';
 import { FullSpecs } from './FullSpecs';
 import { RawDump } from './RawDump';
 import { StatsStrip } from './StatsStrip';
 import type { Stat } from './StatsStrip';
 
 export function AmmoDetailView({ a }: { a: AmmunitionDetail }) {
-  const [imgFailed, setImgFailed] = useState(false);
+  const heroSrc = imageUrl(a.id);
+  const { showImage, onError } = useImageLoadState(heroSrc);
   const stats = pickAmmoStats(a);
   const displayName =
     a.codename && a.codename !== a.name
@@ -25,17 +26,12 @@ export function AmmoDetailView({ a }: { a: AmmunitionDetail }) {
 
   return (
     <div className="detail-inner">
-      <div className={`hero${imgFailed ? ' placeholder' : ''}`}>
+      <div className={`hero${showImage ? '' : ' placeholder'}`}>
         <div className="hero-img-wrap">
-          {imgFailed ? (
-            '[ 暂无图像 ]'
+          {showImage ? (
+            <img src={heroSrc} alt={a.id} loading="lazy" onError={onError} />
           ) : (
-            <img
-              src={imageUrl(a.id)}
-              alt={a.id}
-              loading="lazy"
-              onError={() => setImgFailed(true)}
-            />
+            '[ 暂无图像 ]'
           )}
         </div>
         <div className="hero-info">

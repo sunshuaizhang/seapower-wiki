@@ -37,6 +37,52 @@ public class NationService {
         this.gameConfig = gameConfig;
     }
 
+    /**
+     * Supplementary prefix → canonical nation map. nations_reference.ini ships with only
+     * 17 entries (US/Soviet/Civilian/Iran/etc.), but the game data uses extra prefixes
+     * for smaller fleets (knm = Royal Norwegian Navy, fgs = Federal German Ship, …).
+     * These canonical keys must match entries in language_{lang}/nations.ini so they
+     * pick up a localized name. Verified against each unit's _variants.ini Nation= field.
+     */
+    private static final Map<String, String> SUPPLEMENTARY_PREFIX = Map.ofEntries(
+            // ----- Naval / military prefixes the game data uses but doesn't register -----
+            Map.entry("knm",   "Norway"),
+            Map.entry("fgs",   "Germany"),
+            Map.entry("ger",   "Germany"),
+            Map.entry("es",    "Spain"),
+            Map.entry("ln",    "Libya"),
+            Map.entry("nrp",   "Portugal"),
+            Map.entry("pns",   "Pakistan"),
+            Map.entry("fr",    "France"),
+            Map.entry("it",    "Italy"),
+            Map.entry("bel",   "Belgium"),
+            Map.entry("fin",   "Finland"),
+            Map.entry("is",    "Iceland"),
+            Map.entry("swe",   "Sweden"),
+            Map.entry("nv",    "Vietnam"),
+            Map.entry("iqaf",  "Iraq"),
+            Map.entry("iqa",   "Iraq"),
+            Map.entry("iriaf", "Iran"),
+            Map.entry("irina", "Iran"),
+            Map.entry("jasdf", "Japan"),
+            Map.entry("jsdf",  "Japan"),
+            Map.entry("pla",   "China"),
+            Map.entry("usmc",  "US"),
+            Map.entry("usa",   "US"),
+            // ----- Soviet "sea_*" mines and similar -----
+            Map.entry("sea",   "Soviet"),
+            // ----- Generic / multi-national / non-national items -----
+            Map.entry("nato",        "All"),
+            Map.entry("all",         "All"),
+            Map.entry("test",        "All"),
+            Map.entry("airfield",    "All"),
+            Map.entry("oil",         "All"),
+            Map.entry("port",        "All"),
+            Map.entry("warehouses",  "All"),
+            Map.entry("tgt",         "All"),
+            Map.entry("shared",      "All")
+    );
+
     @PostConstruct
     void load() throws IOException {
         Path file = gameConfig.nationsReference();
@@ -53,6 +99,10 @@ public class NationService {
                     prefixToCanonical.put(prefix, name);
                 }
             }
+        }
+        // Fill in prefixes the game file omits, but never override an explicit mapping.
+        for (Map.Entry<String, String> e : SUPPLEMENTARY_PREFIX.entrySet()) {
+            prefixToCanonical.putIfAbsent(e.getKey(), e.getValue());
         }
         Path nationsLang = gameConfig.languageDir(gameConfig.getDefaultLanguage()).resolve("nations.ini");
         if (Files.exists(nationsLang)) {
