@@ -331,6 +331,20 @@ body {
     padding: 3px 0;
     letter-spacing: 0.5px;
 }
+/* Mission rows put up to ★★★★★ in the badge column. 5 stars at the default
+   badge font overflow the 42px slot, so widen the grid track and tint the
+   stars without a heavy box (the stars themselves carry the meaning). */
+.list-item[data-category="missions"] {
+    grid-template-columns: 58px 1fr;
+}
+.list-item[data-category="missions"] .badge {
+    font-size: 11px;
+    letter-spacing: 0;
+    padding: 3px 0;
+    border: none;
+    background: transparent;
+    color: var(--accent);
+}
 /* Surface combatants: warm orange (the "active fleet") */
 .list-item .badge.role-combat {
     color: var(--warn);

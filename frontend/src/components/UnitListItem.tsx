@@ -38,6 +38,7 @@ export function UnitListItem({ u, selected, onClick }: Props) {
       type="button"
       className={`list-item${selected ? ' selected' : ''}`}
       data-id={u.id}
+      data-category={u.category}
       title={title}
       onClick={onClick}
     >

@@ -1,13 +1,13 @@
-// Star rating display for mission/campaign difficulty (1-3). Color steps:
-// 1 = ok green (easy), 2 = warn orange (medium), 3 = danger red (hard).
-// Filled stars are colored, empties stay faint so the rating still reads
-// linearly even when N is unusual.
+// Star rating display for mission/campaign difficulty (0-5 to match the
+// game's INI range). Color steps: 0-1 easy (green), 2-3 medium (orange),
+// 4-5 hard (red). Filled stars are colored, empties stay faint so the
+// rating still reads linearly even when N is unusual.
 
 import { clampDifficulty, DIFFICULTY_MAX } from '../utils/difficulty';
 
 export function Difficulty({ value, showLabel = false }: { value: number; showLabel?: boolean }) {
   const n = clampDifficulty(value);
-  const tone = n >= 3 ? 'hard' : n >= 2 ? 'med' : 'easy';
+  const tone = n >= 4 ? 'hard' : n >= 2 ? 'med' : 'easy';
   return (
     <span className={`diff diff-${tone}`} title={`难度 ${n}/${DIFFICULTY_MAX}`}>
       <span className="diff-stars">
